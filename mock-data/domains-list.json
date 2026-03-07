@@ -1,0 +1,26 @@
+[
+  {
+    "id": 1,
+    "domainName": "google.com",
+    "registrar": "MarkMonitor Inc.",
+    "expiresAt": "2028-09-14T04:00:00.000Z",
+    "status": "active",
+    "lastCheckedAt": "2026-03-07T21:10:57.875Z"
+  },
+  {
+    "id": 2,
+    "domainName": "openai.com",
+    "registrar": "MarkMonitor Inc.",
+    "expiresAt": "2029-04-20T12:00:00.000Z",
+    "status": "active",
+    "lastCheckedAt": "2026-03-07T21:10:57.875Z"
+  },
+  {
+    "id": 3,
+    "domainName": "github.com",
+    "registrar": "MarkMonitor Inc.",
+    "expiresAt": "2028-10-09T12:00:00.000Z",
+    "status": "active",
+    "lastCheckedAt": "2026-03-07T21:10:57.875Z"
+  }
+]
