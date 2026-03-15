@@ -1,61 +1,24 @@
 {
-  "domain": [
-    {
-      "id": 1,
-      "domainName": "google.com",
-      "registrar": "MarkMonitor Inc.",
-      "createdAt": "1997-09-15T04:00:00.000Z",
-      "updatedAt": "2019-09-09T15:39:04.000Z",
-      "expiresAt": "2028-09-14T04:00:00.000Z",
-      "status": "client delete prohibited, client transfer prohibited, client update prohibited, server delete prohibited, server transfer prohibited, server update prohibited",
-      "rdapUrl": "https://rdap.verisign.com/com/v1/domain/GOOGLE.COM",
-      "lastCheckedAt": "2026-03-07T21:10:57.875Z"
-    }
-  ],
-  "nameserver": [
-    {
-      "id": 1,
-      "domainId": 1,
-      "nameserver": "NS1.GOOGLE.COM"
+  "success": true,
+  "data": {
+    "domainName": "google.com",
+    "registrar": "MarkMonitor Inc.",
+    "dates": {
+      "registration": "1997-09-15",
+      "updated": "2019-09-09",
+      "expiration": "2028-09-14"
     },
-    {
-      "id": 2,
-      "domainId": 1,
-      "nameserver": "NS2.GOOGLE.COM"
-    },
-    {
-      "id": 3,
-      "domainId": 1,
-      "nameserver": "NS3.GOOGLE.COM"
-    },
-    {
-      "id": 4,
-      "domainId": 1,
-      "nameserver": "NS4.GOOGLE.COM"
-    }
-  ],
-  "lookuphistory": [
-    {
-      "id": 1,
-      "domainId": 1,
-      "domainName": "google.com",
-      "queryType": "RDAP",
-      "responseStatus": 200,
-      "success": true,
-      "checkedAt": "2026-03-07T21:08:32.125Z",
-      "rawResponse": "{\"objectClassName\":\"domain\",\"handle\":\"2138514_DOMAIN_COM-VRSN\"}",
-      "errorMessage": null
-    },
-    {
-      "id": 2,
-      "domainId": 1,
-      "domainName": "google.com",
-      "queryType": "RDAP",
-      "responseStatus": 200,
-      "success": true,
-      "checkedAt": "2026-03-07T21:10:57.990Z",
-      "rawResponse": "{\"objectClassName\":\"domain\",\"handle\":\"2138514_DOMAIN_COM-VRSN\"}",
-      "errorMessage": null
-    }
-  ]
+    "status": ["registered", "active", "prohibited"],
+    "daysLeft": 912,
+    "nameservers": [
+      "NS1.GOOGLE.COM",
+      "NS2.GOOGLE.COM",
+      "NS3.GOOGLE.COM",
+      "NS4.GOOGLE.COM"
+    ],
+    "history": [
+      { "date": "2026-03-07T21:10:57", "status": "success" },
+      { "date": "2026-03-06T10:00:00", "status": "success" }
+    ]
+  }
 }
