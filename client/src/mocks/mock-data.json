@@ -1,0 +1,24 @@
+{
+  "success": true,
+  "data": {
+    "domainName": "google.com",
+    "registrar": "MarkMonitor Inc.",
+    "dates": {
+      "registration": "1997-09-15",
+      "updated": "2019-09-09",
+      "expiration": "2028-09-14"
+    },
+    "status": ["registered", "active", "prohibited"],
+    "daysLeft": 912,
+    "nameservers": [
+      "NS1.GOOGLE.COM",
+      "NS2.GOOGLE.COM",
+      "NS3.GOOGLE.COM",
+      "NS4.GOOGLE.COM"
+    ],
+    "history": [
+      { "date": "2026-03-07T21:10:57", "status": "success" },
+      { "date": "2026-03-06T10:00:00", "status": "success" }
+    ]
+  }
+}
