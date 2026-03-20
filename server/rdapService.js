@@ -7,6 +7,11 @@ const { PrismaMariaDb } = require("@prisma/adapter-mariadb");
 const adapter = new PrismaMariaDb(process.env.DATABASE_URL);
 const prisma = new PrismaClient({ adapter });
 
+function formatDateOnly(dateString) {
+  if (!dateString) return null;
+  return dateString.slice(0, 10);
+}
+
 function getRegistrarName(data) {
   const registrarEntity = data.entities?.find(entity =>
     entity.roles?.includes("registrar")
@@ -20,7 +25,20 @@ function getRegistrarName(data) {
 
 function getEventDate(data, actionName) {
   const event = data.events?.find(event => event.eventAction === actionName);
-  return event?.eventDate ? new Date(event.eventDate) : null;
+  return event?.eventDate || null;
+}
+
+function calculateDaysLeft(expiresAt) {
+  if (!expiresAt) return null;
+
+  const today = new Date();
+  const expiry = new Date(expiresAt);
+
+  today.setHours(0, 0, 0, 0);
+  expiry.setHours(0, 0, 0, 0);
+
+  const diffMs = expiry - today;
+  return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 }
 
 async function getDomainInfo(domain) {
@@ -30,20 +48,29 @@ async function getDomainInfo(domain) {
     const data = response.data;
 
     const registrarName = getRegistrarName(data);
-    const createdAt = getEventDate(data, "registration");
-    const expiresAt = getEventDate(data, "expiration");
-    const updatedAt = getEventDate(data, "last changed");
+
+    const createdAtRaw = getEventDate(data, "registration");
+    const expiresAtRaw = getEventDate(data, "expiration");
+    const updatedAtRaw = getEventDate(data, "last changed");
+
+    const createdAt = formatDateOnly(createdAtRaw);
+    const expiresAt = formatDateOnly(expiresAtRaw);
+    const updatedAt = formatDateOnly(updatedAtRaw);
+    const lastCheckedAt = formatDateOnly(new Date().toISOString());
+
+    const daysLeft = calculateDaysLeft(expiresAtRaw);
+    const statusArray = Array.isArray(data.status) ? data.status : [];
+    const statusText = JSON.stringify(statusArray);
 
     console.log("=== WYNIK RDAP ===");
     console.log("Domena:", domain);
     console.log("Kod odpowiedzi:", response.status);
-    console.log("LDH Name:", data.ldhName || "brak");
-    console.log("Handle:", data.handle || "brak");
     console.log("Registrar:", registrarName || "brak");
     console.log("Created at:", createdAt || "brak");
     console.log("Expires at:", expiresAt || "brak");
     console.log("Updated at:", updatedAt || "brak");
-    console.log("Status domeny:", data.status || "brak");
+    console.log("Days left:", daysLeft);
+    console.log("Status:", statusArray);
 
     const domainRecord = await prisma.domain.upsert({
       where: { domainName: domain },
@@ -52,9 +79,10 @@ async function getDomainInfo(domain) {
         createdAt,
         updatedAt,
         expiresAt,
-        status: Array.isArray(data.status) ? data.status.join(", ") : String(data.status || ""),
+        daysLeft,
+        status: statusText,
         rdapUrl: data.links?.[0]?.href || null,
-        lastCheckedAt: new Date()
+        lastCheckedAt
       },
       create: {
         domainName: domain,
@@ -62,9 +90,10 @@ async function getDomainInfo(domain) {
         createdAt,
         updatedAt,
         expiresAt,
-        status: Array.isArray(data.status) ? data.status.join(", ") : String(data.status || ""),
+        daysLeft,
+        status: statusText,
         rdapUrl: data.links?.[0]?.href || null,
-        lastCheckedAt: new Date()
+        lastCheckedAt
       }
     });
 
@@ -75,7 +104,7 @@ async function getDomainInfo(domain) {
         queryType: "RDAP",
         responseStatus: response.status,
         success: true,
-        rawResponse: JSON.stringify(data)
+        checkedAt: lastCheckedAt
       }
     });
 
@@ -101,15 +130,12 @@ async function getDomainInfo(domain) {
       console.log("Brak nameserverów");
     }
 
-    console.log("Pełny JSON:");
-    console.log(JSON.stringify(data, null, 2));
     console.log("Dane zapisane do bazy.");
   } catch (error) {
     console.log("=== BŁĄD PODCZAS ZAPYTANIA ===");
 
     if (error.response) {
       console.log("Kod błędu:", error.response.status);
-      console.log("Odpowiedź API:", error.response.data);
 
       await prisma.lookupHistory.create({
         data: {
@@ -117,7 +143,7 @@ async function getDomainInfo(domain) {
           queryType: "RDAP",
           responseStatus: error.response.status,
           success: false,
-          rawResponse: JSON.stringify(error.response.data),
+          checkedAt: new Date().toISOString().slice(0, 10),
           errorMessage: "Błąd odpowiedzi API"
         }
       });
@@ -129,6 +155,7 @@ async function getDomainInfo(domain) {
           domainName: domain,
           queryType: "RDAP",
           success: false,
+          checkedAt: new Date().toISOString().slice(0, 10),
           errorMessage: error.message
         }
       });

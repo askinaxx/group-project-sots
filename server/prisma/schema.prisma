@@ -10,12 +10,13 @@ model Domain {
   id            Int             @id @default(autoincrement())
   domainName    String          @unique @db.VarChar(255)
   registrar     String?         @db.VarChar(255)
-  createdAt     DateTime?
-  updatedAt     DateTime?
-  expiresAt     DateTime?
+  createdAt     String?         @db.VarChar(10)
+  updatedAt     String?         @db.VarChar(10)
+  expiresAt     String?         @db.VarChar(10)
+  daysLeft      Int?
   status        String?         @db.Text
   rdapUrl       String?         @db.VarChar(500)
-  lastCheckedAt DateTime?
+  lastCheckedAt String?         @db.VarChar(10)
   nameservers   Nameserver[]
   lookups       LookupHistory[]
 }
@@ -34,8 +35,7 @@ model LookupHistory {
   queryType      String   @db.VarChar(50)
   responseStatus Int?
   success        Boolean
-  checkedAt      DateTime @default(now())
-  rawResponse    String?  @db.LongText
+  checkedAt      String?  @db.VarChar(10)
   errorMessage   String?  @db.Text
   domain         Domain?  @relation(fields: [domainId], references: [id], onDelete: SetNull)
 }
