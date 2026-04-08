@@ -63,6 +63,47 @@ function mapResponse(domainRecord, nameservers) {
   };
 }
 
+async function saveLookupLog({
+  domainId = null,
+  domainName,
+  queryType = "RDAP",
+  responseStatus = null,
+  success,
+  errorMessage = null,
+  source = null,
+  responseTimeMs = null,
+  cacheMiss = null
+}) {
+  console.log("Saving lookup log...", {
+    domainId,
+    domainName,
+    queryType,
+    responseStatus,
+    success,
+    errorMessage,
+    source,
+    responseTimeMs,
+    cacheMiss
+  });
+
+  const saved = await prisma.lookupHistory.create({
+    data: {
+      domainId,
+      domainName,
+      queryType,
+      responseStatus,
+      success,
+      checkedAt: new Date().toISOString().slice(0, 10),
+      errorMessage,
+      source,
+      responseTimeMs,
+      cacheMiss
+    }
+  });
+
+  console.log("Lookup log saved:", saved.id);
+}
+
 async function fetchFromRdap(domain) {
   const url = `https://rdap.org/domain/${domain}`;
   const response = await axios.get(url);
@@ -107,17 +148,6 @@ async function fetchFromRdap(domain) {
     }
   });
 
-  await prisma.lookupHistory.create({
-    data: {
-      domainId: domainRecord.id,
-      domainName: domain,
-      queryType: "RDAP",
-      responseStatus: response.status,
-      success: true,
-      checkedAt: lastCheckedAt
-    }
-  });
-
   await prisma.nameserver.deleteMany({
     where: { domainId: domainRecord.id }
   });
@@ -134,18 +164,23 @@ async function fetchFromRdap(domain) {
   }
 
   return {
-    domainName: domain,
-    registrar: registrarName,
-    createdAt,
-    updatedAt,
-    expiresAt,
-    daysLeft,
-    status: statusArray,
-    nameservers: nameserverData.map(ns => ns.nameserver)
+    domainRecord,
+    result: {
+      domainName: domain,
+      registrar: registrarName,
+      createdAt,
+      updatedAt,
+      expiresAt,
+      daysLeft,
+      status: statusArray,
+      nameservers: nameserverData.map(ns => ns.nameserver)
+    },
+    responseStatus: response.status
   };
 }
 
 async function getDomainByName(req, res) {
+  const startTime = Date.now();
   const domain = req.params.name.toLowerCase();
   const cacheKey = `domain:${domain}`;
 
@@ -155,7 +190,20 @@ async function getDomainByName(req, res) {
     const cached = await redisClient.get(cacheKey);
 
     if (cached) {
+      const responseTimeMs = Date.now() - startTime;
+
       console.log("Data fetched from Redis/Cache");
+
+      await saveLookupLog({
+        domainName: domain,
+        queryType: "RDAP",
+        responseStatus: 200,
+        success: true,
+        source: "REDIS",
+        responseTimeMs,
+        cacheMiss: false
+      });
+
       return res.status(200).json(JSON.parse(cached));
     }
 
@@ -174,20 +222,66 @@ async function getDomainByName(req, res) {
         EX: 86400
       });
 
+      const responseTimeMs = Date.now() - startTime;
+
       console.log("Data fetched from MySQL");
+
+      await saveLookupLog({
+        domainId: domainRecord.id,
+        domainName: domain,
+        queryType: "RDAP",
+        responseStatus: 200,
+        success: true,
+        source: "MYSQL",
+        responseTimeMs,
+        cacheMiss: true
+      });
+
       return res.status(200).json(result);
     }
 
-    const result = await fetchFromRdap(domain);
+    const { domainRecord: savedDomain, result, responseStatus } = await fetchFromRdap(domain);
 
     await redisClient.set(cacheKey, JSON.stringify(result), {
       EX: 86400
     });
 
+    const responseTimeMs = Date.now() - startTime;
+
     console.log("Data fetched from RDAP");
+
+    await saveLookupLog({
+      domainId: savedDomain.id,
+      domainName: domain,
+      queryType: "RDAP",
+      responseStatus,
+      success: true,
+      source: "RDAP",
+      responseTimeMs,
+      cacheMiss: true
+    });
+
     return res.status(200).json(result);
   } catch (error) {
+    const responseTimeMs = Date.now() - startTime;
+
     console.error("Błąd endpointu:", error.message);
+
+    try {
+      await saveLookupLog({
+        domainName: domain,
+        queryType: "RDAP",
+        responseStatus: 500,
+        success: false,
+        errorMessage: error.message,
+        source: "ERROR",
+        responseTimeMs,
+        cacheMiss: null
+      });
+    } catch (logError) {
+      console.error("Błąd zapisu lookup log:", logError.message);
+    }
+
     return res.status(500).json({
       message: "Błąd podczas pobierania danych domeny"
     });
