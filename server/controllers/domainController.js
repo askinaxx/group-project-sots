@@ -147,11 +147,12 @@ async function fetchFromRdap(domain) {
 
 async function getDomainByName(req, res) {
   const domain = req.params.name.toLowerCase();
+  const cacheKey = `domain:${domain}`;
 
   try {
     await connectRedis();
 
-    const cached = await redisClient.get(domain);
+    const cached = await redisClient.get(cacheKey);
 
     if (cached) {
       console.log("Data fetched from Redis/Cache");
@@ -169,7 +170,7 @@ async function getDomainByName(req, res) {
 
       const result = mapResponse(domainRecord, nameservers);
 
-      await redisClient.set(domain, JSON.stringify(result), {
+      await redisClient.set(cacheKey, JSON.stringify(result), {
         EX: 86400
       });
 
@@ -179,7 +180,7 @@ async function getDomainByName(req, res) {
 
     const result = await fetchFromRdap(domain);
 
-    await redisClient.set(domain, JSON.stringify(result), {
+    await redisClient.set(cacheKey, JSON.stringify(result), {
       EX: 86400
     });
 
