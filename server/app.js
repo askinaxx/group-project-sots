@@ -4,6 +4,7 @@ const express = require("express");
 const cors = require("cors");
 const domainRoutes = require("./routes/domainRoutes");
 const { connectRedis } = require("./config/redisClient");
+const { startDomainRefreshJob } = require("./jobs/domainRefreshJob");
 
 const app = express();
 
@@ -21,6 +22,8 @@ async function startServer() {
     app.listen(PORT, () => {
       console.log(`Server działa na porcie ${PORT}`);
     });
+
+    startDomainRefreshJob();
   } catch (error) {
     console.error("Błąd przy starcie aplikacji:", error.message);
   }
