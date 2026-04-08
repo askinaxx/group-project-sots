@@ -3,22 +3,10 @@ require("dotenv").config();
 const axios = require("axios");
 const { PrismaClient } = require("@prisma/client");
 const { PrismaMariaDb } = require("@prisma/adapter-mariadb");
-const { createClient } = require("redis");
+const { redisClient, connectRedis } = require("../config/redisClient");
 
 const adapter = new PrismaMariaDb(process.env.DATABASE_URL);
 const prisma = new PrismaClient({ adapter });
-
-const redisClient = createClient({
-  url: "redis://127.0.0.1:6379"
-});
-
-redisClient.on("error", (err) => console.log("Redis error:", err));
-
-async function connectRedis() {
-  if (!redisClient.isOpen) {
-    await redisClient.connect();
-  }
-}
 
 function formatDateOnly(dateString) {
   if (!dateString) return null;
@@ -145,7 +133,7 @@ async function fetchFromRdap(domain) {
     });
   }
 
-  const result = {
+  return {
     domainName: domain,
     registrar: registrarName,
     createdAt,
@@ -155,8 +143,6 @@ async function fetchFromRdap(domain) {
     status: statusArray,
     nameservers: nameserverData.map(ns => ns.nameserver)
   };
-
-  return result;
 }
 
 async function getDomainByName(req, res) {
