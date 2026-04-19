@@ -1,22 +1,28 @@
 {
-  "name": "procject-multi",
+  "name": "project-multi",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Backend API for domain info project",
+  "main": "app.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node app.js",
+    "dev": "node app.js",
+    "test-cron": "node test/runDomainRefreshJob.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "@prisma/adapter-mariadb": "^7.4.2",
-    "@prisma/client": "^7.4.2",
-    "axios": "^1.13.6",
-    "dotenv": "^17.3.1"
+    "@prisma/adapter-mariadb": "^7.7.0",
+    "@prisma/client": "^7.7.0",
+    "axios": "^1.15.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.4.1",
+    "express": "^5.1.0",
+    "node-cron": "^4.2.1",
+    "redis": "^5.11.0"
   },
   "devDependencies": {
-    "prisma": "^7.4.2"
+    "prisma": "^7.7.0"
   }
 }

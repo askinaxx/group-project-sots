@@ -37,5 +37,8 @@ model LookupHistory {
   success        Boolean
   checkedAt      String?  @db.VarChar(10)
   errorMessage   String?  @db.Text
+  source         String?  @db.VarChar(20)
+  responseTimeMs Int?
+  cacheMiss      Boolean?
   domain         Domain?  @relation(fields: [domainId], references: [id], onDelete: SetNull)
 }

@@ -1,0 +1,35 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: sots-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: domain_info_app
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  redis:
+    image: redis:7
+    container_name: sots-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+
+  api:
+    build:
+      context: ./server
+    container_name: sots-api
+    restart: unless-stopped
+    depends_on:
+      - db
+      - redis
+    env_file:
+      - ./server/.env
+    ports:
+      - "3000:3000"
+
+volumes:
+  mysql_data:
