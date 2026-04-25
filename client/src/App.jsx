@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
+import html2pdf from "html2pdf.js";
 import { Search, History, ArrowDown } from 'lucide-react';
+
 
 const localMockData = {
   "success": true,
@@ -15,6 +17,7 @@ const localMockData = {
 function App() {
   const [domainData] = useState(localMockData.data);
   const [query, setQuery] = useState("");
+  const pdfRef = useRef();
   const [searchHistory] = useState([
     { name: "domain.name.com", date: "5 minutes ago", status: "active" },
     { name: "domain.name.com", date: "5 minutes ago", status: "active" }
@@ -50,7 +53,9 @@ function App() {
 
       {/* --- MAIN RESULT CARD --- */}
       {domainData && (
-        <div className="rounded-[40px] shadow-2xl border border-white/5" 
+        <div 
+            ref={pdfRef}
+            className="rounded-[40px] shadow-2xl border border-white/5"
              style={{ backgroundColor: '#2F2F2F', width: '960px', padding: '60px', marginBottom: '100px' }}>
           
           <div style={{ display: 'flex', gap: '60px' }}>
@@ -118,8 +123,43 @@ function App() {
 
       <footer className="py-10 text-[10px] text-[#444] tracking-[0.6em] uppercase font-light">2026 ®</footer>
     </div>
-  );
+  
+  const handleDownloadPDF = () => {
+  const element = pdfRef.current;
+
+  const options = {
+    margin: 0.5,
+    filename: `${domainData.domainName}.pdf`,
+    image: { type: 'jpeg', quality: 1 },
+    html2canvas: { scale: 2 },
+    jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+  };
+
+  html2pdf().set(options).from(element).save();
+
+<div className="mb-20">
+  <button
+    onClick={handleDownloadPDF}
+    className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-full text-xs uppercase tracking-widest"
+  >
+    Download PDF
+  </button>
+</div>
+
+<div className="mb-20">
+  <button
+    onClick={handleDownloadPDF}
+    className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-full text-xs uppercase tracking-widest"
+  >
+    Download PDF
+  </button>
+</div>
+
+};
+);
 }
+
+
 
 function StatBox({ title, value }) {
   return (
