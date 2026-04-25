@@ -48,6 +48,8 @@ const S = {
     boxSizing: 'border-box',
     display: 'flex',
     gap: '60px', 
+    position: 'relative', // Ważne dla paska ładowania
+    overflow: 'hidden',
   },
   leftCol: {
     flex: 1,
@@ -76,6 +78,21 @@ const S = {
     textAlign: 'center',
     boxShadow: 'inset 0 0 15px rgba(0,0,0,0.2)',
   },
+  pdfBtn: {
+    backgroundColor: 'rgba(147, 51, 234, 0.4)',
+    color: '#FFFFFF',
+    border: '1px solid rgba(147, 51, 234, 0.3)',
+    borderRadius: '12px',
+    padding: '15px 25px',
+    fontSize: '11px',
+    textTransform: 'uppercase',
+    letterSpacing: '0.15em',
+    fontWeight: '700',
+    cursor: 'pointer',
+    width: '100%',
+    marginTop: '20px',
+    transition: 'all 0.3s ease',
+  },
   footer: {
     width: '100%',
     maxWidth: '960px',
@@ -83,9 +100,6 @@ const S = {
     paddingTop: '40px',
     marginTop: '80px',
     textAlign: 'center',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center'
   }
 };
 
@@ -97,6 +111,20 @@ export default function App() {
   const [searchHistory, setSearchHistory] = useState([]);
   const pdfRef = useRef();
 
+  const calculateProgress = (start, end) => {
+    if (!start || !end) return 0;
+    const startTime = new Date(start).getTime();
+    const endTime = new Date(end).getTime();
+    const nowTime = new Date().getTime();
+    
+    const total = endTime - startTime;
+    const elapsed = nowTime - startTime;
+    
+    const progress = Math.round((elapsed / total) * 100);
+    return Math.min(Math.max(progress, 0), 100); // Zwraca od 0 do 100
+  };
+
+
   const handleSearch = async () => {
     if (!query) return;
     setLoading(true);
@@ -106,14 +134,10 @@ export default function App() {
       if (!response.ok) throw new Error('Domain not found');
       const result = await response.json();
       setDomainData(result); 
-
-       // --- LOGIKA STATUSU DLA HISTORII (Spójna z kartą główną) ---
-      const statusFromApi = result.status?.[0]?.toLowerCase() || "";
       
-      // Definiujemy co uznajemy za "ACTIVE"
+      const statusFromApi = result.status?.[0]?.toLowerCase() || "";
       const isActive = statusFromApi.includes('active') || 
                        (statusFromApi.includes('prohibited') && !statusFromApi.includes('pending'));
-
       const displayStatus = isActive ? "ACTIVE" : "INACTIVE";
 
       const newItem = { 
@@ -127,38 +151,71 @@ export default function App() {
       setError(err.message);
       setDomainData(null);
     } finally {
-      setLoading(false);
+      setTimeout(() => setLoading(false), 500); // Małe opóźnienie żebyś widziała pasek!
     }
   };
 
-  const handleDownloadPDF = () => {
+    const handleDownloadPDF = () => {
     const element = pdfRef.current;
+    
+    // Opcje dla generatora
     const options = {
-      margin: [0.2, 0.2, 0.2, 0.2],
+      margin: [0.5, 0.5, 0.5, 0.5],
       filename: `${domainData?.domainName || 'report'}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true, backgroundColor: '#1C1C1C' },
-      jsPDF: { unit: 'in', format: 'a4', orientation: 'landscape' }
+      image: { type: 'jpeg', quality: 1 },
+      html2canvas: { 
+        scale: 2, 
+        useCORS: true, 
+        backgroundColor: '#1C1C1C',
+        width: 960, 
+        windowWidth: 1200, 
+        y: 0,
+        scrollX: 0,
+        scrollY: 0
+      },
+      jsPDF: { 
+        unit: 'in', 
+        format: 'a4', 
+        orientation: 'landscape',
+        compress: true 
+      }
     };
-    html2pdf().set(options).from(element).save();
+
+
+    const originalStyle = element.style.cssText;
+    element.style.width = '960px';
+    element.style.minHeight = 'auto';
+    element.style.display = 'flex';
+    element.style.flexDirection = 'row';
+    element.style.backgroundColor = '#1C1C1C';
+
+
+    html2pdf().set(options).from(element).save().then(() => {
+      element.style.cssText = originalStyle;
+    });
   };
+
+
 
   return (
     <div style={S.container}>
       
       <style>{`
         .search-btn:hover { background-color: #9333ea !important; color: white !important; }
-        .pdf-btn { background-color: rgba(147, 51, 234, 0.4) !important; color: rgba(255, 255, 255, 0.8) !important; border: 1px solid rgba(147, 51, 234, 0.3) !important; }
-        .pdf-btn:hover { background-color: #9333ea !important; color: white !important; box-shadow: 0 0 25px rgba(147, 51, 234, 0.6) !important; }
+        .pdf-btn-hover:hover { background-color: #9333ea !important; box-shadow: 0 0 25px rgba(147, 51, 234, 0.6) !important; transform: scale(1.02); color: white !important; }
         .history-item:hover { border-color: rgba(147, 51, 234, 0.4) !important; background-color: rgba(147, 51, 234, 0.05) !important; }
+        @keyframes progressLine {
+          0% { width: 0; left: 0; }
+          50% { width: 100%; left: 0; }
+          100% { width: 100%; left: 100%; }
+        }
+        .progress-line { animation: progressLine 1.5s infinite ease-in-out; }
       `}</style>
 
       {/* --- HEADER --- */}
       <header style={S.header}>
-        <h1 className="text-5xl font-bold mb-10 text-white tracking-tight leading-tight">Looking for current status of domain?</h1>
-        <p className="text-[#888] text-lg mb-16 font-light tracking-wide">Enter below name of domain that you are looking for</p>
-        
-        {/* --- WYSZUKIWARKA --- */}
+        <h1 className="text-5xl font-bold mb-10 text-white tracking-tight">Looking for current status of domain?</h1>
+        <p className="text-[#888] text-lg mb-16 font-light">Enter below name of domain that you are looking for</p>
         <div className="flex flex-col items-center">
           <input 
             type="text"
@@ -178,104 +235,152 @@ export default function App() {
 
       {/* --- KARTA WYNIKÓW --- */}
       {domainData && (
-        <div ref={pdfRef} style={S.card}>
-          <div style={S.leftCol}>
-            {/* --- DOMAIN NAME --- */}
-            <div className="border-b border-white/10 pb-10 mb-6">
-              <h2 className="text-4xl font-bold tracking-[0.2em] text-white uppercase">{domainData.domainName}</h2>
-            </div>
-            
-            {/* --- KEY DATES --- */}
-            <div className="grid grid-cols-3 gap-6">
-              <StatBox title="REGISTRATION DATE" value={domainData.createdAt || "N/A"} />
-              <StatBox title="LAST UPDATE DATE" value={domainData.updatedAt || "N/A"} />
-              <StatBox title="EXPIRATION DATE" value={domainData.expiresAt || "N/A"} />
-            </div>
+        <div style={S.card}>
 
-            {/* --- LINKED DNS SERVER --- */}
-            <div style={S.dnsBox} className="mt-8">
-                 <p className="text-[11px] text-[#999] uppercase tracking-[0.3em] font-bold mb-4 border-b border-purple-500/30 pb-2 inline-block">linked dns server</p>
-                 <div className="flex flex-wrap gap-3 mt-4">
-                    {domainData.nameservers ? domainData.nameservers.map((ns, idx) => (
-                      <span key={idx} style={{backgroundColor: 'rgba(147, 51, 234, 0.05)', border: '1px solid rgba(147, 51, 234, 0.2)', padding: '8px 18px', borderRadius: '8px', fontSize: '13px', color: '#ddd', letterSpacing: '0.05em'}}>
-                        {ns}
-                      </span>
-                    )) : <p className="text-sm text-[#666]">No data available</p>}
-                 </div>
-            </div>
-          </div>
 
-          <div style={S.rightCol}>
-            {/* --- TE TRZY STATUSY --- */}
-            <div style={{ marginBottom: '30px' }}>
-              <div style={{backgroundColor: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '8px', padding: '12px 20px', textAlign: 'center', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.3em', fontWeight: '700', color: '#aaa', marginBottom: '10px'}}>registered</div>
-              <div style={{
-                backgroundColor: (domainData.status?.[0]?.toLowerCase().includes('active') || domainData.status?.[0]?.toLowerCase().includes('prohibited')) 
-                  ? 'rgba(74, 222, 128, 0.05)' 
-                  : 'rgba(239, 68, 68, 0.05)', 
-                color: (domainData.status?.[0]?.toLowerCase().includes('active') || domainData.status?.[0]?.toLowerCase().includes('prohibited')) 
-                  ? '#4ade80' 
-                  : '#ef4444', 
-                border: `1px solid ${(domainData.status?.[0]?.toLowerCase().includes('active') || domainData.status?.[0]?.toLowerCase().includes('prohibited')) 
-                  ? 'rgba(74, 222, 128, 0.2)' 
-                  : 'rgba(239, 68, 68, 0.2)'}`, 
-                borderRadius: '8px', 
-                padding: '12px 20px', 
-                textAlign: 'center', 
-                fontSize: '10px', 
-                textTransform: 'uppercase', 
-                letterSpacing: '0.3em', 
-                fontWeight: '700', 
-                marginBottom: '10px'
-              }}>
-                {(domainData.status?.[0]?.toLowerCase().includes('active') || domainData.status?.[0]?.toLowerCase().includes('prohibited')) 
-                  ? "ACTIVE" 
-                  : "INACTIVE"}
+          <div ref={pdfRef} style={{ display: 'flex', gap: '60px', width: '100%' }}>
+            <div style={S.leftCol}>
+              <div className="border-b border-white/10 pb-10 mb-6 text-white uppercase font-bold text-4xl tracking-widest">
+                {domainData.domainName}
               </div>
-              <p style={{ textAlign: 'center', fontSize: '11px', fontStyle: 'italic', color: '#666', marginTop: '15px' }}>
-                days left: <span className="text-white font-bold">{domainData?.daysLeft || "N/A"}</span>
-              </p>
+              <div className="grid grid-cols-3 gap-6">
+                <StatBox title="REGISTRATION DATE" value={domainData.createdAt || "N/A"} />
+                <StatBox title="LAST UPDATE DATE" value={domainData.updatedAt || "N/A"} />
+                <StatBox title="EXPIRATION DATE" value={domainData.expiresAt || "N/A"} />
+              </div>
+                {/* --- SEKACJA LIFETIME PROGRESS (Domain Lifecycle) --- */}
+              <div style={{ marginTop: '20px', marginBottom: '20px' }}>
+                  <p style={{ fontSize: '10px', color: '#666', uppercase: 'true', letterSpacing: '0.2em', fontWeight: 'bold', marginBottom: '10px' }}>
+                      LIFETIME PROGRESS: <span style={{ color: '#9333ea' }}>{calculateProgress(domainData.createdAt, domainData.expiresAt)}%</span>
+                  </p>
+                  <div style={{
+                      width: '100%',
+                      height: '8px',
+                      backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                      borderRadius: '999px',
+                      overflow: 'hidden',
+                      border: '1px solid rgba(255, 255, 255, 0.05)'
+                  }}>
+                      <div style={{
+                          height: '100%',
+                          width: `${calculateProgress(domainData.createdAt, domainData.expiresAt)}%`,
+                          backgroundColor: '#9333ea',
+                          boxShadow: '0 0 15px rgba(147, 51, 234, 0.4)',
+                          transition: 'width 1s ease-in-out',
+                          borderRadius: '999px'
+                      }}></div>
+                  </div>
+              </div>
+
+              <div style={S.dnsBox} className="mt-8">
+                   <p className="text-[11px] text-[#999] uppercase tracking-[0.3em] font-bold mb-4 border-b border-purple-500/30 pb-2 inline-block">linked dns server</p>
+                   <div className="flex flex-wrap gap-3 mt-4">
+                      {domainData.nameservers?.map((ns, idx) => (
+                        <span key={idx} style={{backgroundColor: 'rgba(147, 51, 234, 0.05)', border: '1px solid rgba(147, 51, 234, 0.2)', padding: '8px 18px', borderRadius: '8px', fontSize: '13px', color: '#ddd'}}>{ns}</span>
+                      ))}
+                   </div>
+              </div>
             </div>
 
-            {/* --- WŁAŚCICIEL (OWNERSHIP) --- */}
-            <div style={S.ownershipBox}>
-              <p className="text-[11px] text-[#999] uppercase tracking-[0.3em] font-bold mb-10">ownership</p>
-              <div className="w-16 h-16 bg-purple-500/10 rounded-full mx-auto mb-10 flex items-center justify-center border border-purple-500/20">
-                 <div className="w-4 h-4 bg-purple-500 rounded-full blur-[1px]"></div>
+            <div style={S.rightCol}>
+              <div style={{ marginBottom: '30px' }}>
+                <div style={{backgroundColor: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '8px', padding: '12px 20px', textAlign: 'center', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.3em', fontWeight: '700', color: '#aaa', marginBottom: '10px'}}>registered</div>
+                <div style={{
+                  backgroundColor: (domainData.status?.[0]?.toLowerCase().includes('active') || domainData.status?.[0]?.toLowerCase().includes('prohibited')) ? 'rgba(74, 222, 128, 0.05)' : 'rgba(239, 68, 68, 0.05)', 
+                  color: (domainData.status?.[0]?.toLowerCase().includes('active') || domainData.status?.[0]?.toLowerCase().includes('prohibited')) ? '#4ade80' : '#ef4444', 
+                  border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '8px', padding: '12px 20px', textAlign: 'center', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.3em', fontWeight: '700', marginBottom: '10px'
+                }}>
+                  {(domainData.status?.[0]?.toLowerCase().includes('active') || domainData.status?.[0]?.toLowerCase().includes('prohibited')) ? "ACTIVE" : "INACTIVE"}
+                </div>
               </div>
-              <p className="text-[14px] font-bold tracking-[0.15em] text-white uppercase mb-14 leading-relaxed">
-                {domainData.registrar || "MarkMonitor Inc."}
-              </p>
-              <button onClick={handleDownloadPDF} style={{backgroundColor: 'rgba(147, 51, 234, 0.4)', color: 'rgba(255, 255, 255, 0.8)', border: '1px solid rgba(147, 51, 234, 0.3)', borderRadius: '12px', padding: '15px 25px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: '700', cursor: 'pointer', width: '100%', marginTop: '20px', transition: 'all 0.3s ease'}} className="pdf-btn">Download PDF Report</button>
+              <div style={S.ownershipBox}>
+                <p className="text-[11px] text-[#999] uppercase tracking-[0.3em] font-bold mb-10">ownership</p>
+                <p className="text-[14px] font-bold text-white uppercase mb-14">{domainData.registrar || "MarkMonitor Inc."}</p>
+                <button onClick={handleDownloadPDF} style={S.pdfBtn} className="pdf-btn-hover">Download PDF Report</button>
+              </div>
             </div>
           </div>
         </div>
       )}
 
       {/* --- HISTORY --- */}
-      <div className="w-full max-w-[960px] mb-20 flex flex-col items-center">
-        <div style={{width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'flex-start', marginBottom: '40px', paddingLeft: '24px'}}>
+      <div className="w-full max-w-[960px] mb-20">
+        <div style={{width: '100%', display: 'flex', alignItems: 'center', marginBottom: '40px', paddingLeft: '24px'}}>
            <History size={20} color="#555" />
            <span style={{marginLeft: '15px', color: '#555', fontSize: '12px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.4em'}}>Your search history</span>
         </div>
-        <div className="flex flex-col gap-4 w-full">
-          {searchHistory.length > 0 ? searchHistory.map((h, i) => (
-            <div key={i} className="history-item" style={{backgroundColor: 'rgba(28, 28, 28, 0.6)', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '20px', padding: '20px 35px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backdropFilter: 'blur(10px)', transition: 'all 0.3s ease'}}>
-              <span className="text-[#eee] font-semibold text-[14px] tracking-wide w-1/3">{h.name}</span>
-              <div className="flex items-center gap-3 w-1/3 justify-center">
-                 <div style={{backgroundColor: h.status === 'ACTIVE' ? '#4ade80' : '#ef4444'}} className="w-2 h-2 rounded-full shadow-[0_0_10px_rgba(34,197,94,0.5)]"></div>
-                 <span style={{color: h.status === 'ACTIVE' ? '#4ade80' : '#ef4444'}} className="font-bold uppercase text-[11px] tracking-widest">{h.status}</span>
+        <div className="flex flex-col gap-4">
+          {searchHistory.map((h, i) => (
+            <div key={i} className="history-item" style={{
+              backgroundColor: 'rgba(28, 28, 28, 0.6)', 
+              border: '1px solid rgba(255, 255, 255, 0.05)', 
+              borderRadius: '20px', 
+              padding: '20px 35px', 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center', 
+              backdropFilter: 'blur(10px)', 
+              transition: 'all 0.3s ease'
+            }}>
+              {/* 1. NAZWA DOMENY (Wyrównana do lewej) */}
+              <span style={{ 
+                textOverflow: 'ellipsis', 
+                overflow: 'hidden', 
+                whiteSpace: 'nowrap', 
+                color: '#eee', 
+                fontWeight: '600', 
+                fontSize: '14px', 
+                width: '33%', 
+                textAlign: 'left' 
+              }}>
+                {h.name}
+              </span>
+
+              {/* 2. STATUS (Zawsze idealnie na środku) */}
+              <div style={{ 
+                width: '33%', 
+                display: 'flex', 
+                justifyContent: 'center', 
+                alignItems: 'center', 
+                gap: '10px' 
+              }}>
+                <div style={{
+                  backgroundColor: h.status === 'ACTIVE' ? '#4ade80' : '#ef4444',
+                  width: '8px', 
+                  height: '8px', 
+                  borderRadius: 'full', 
+                  boxShadow: `0 0 10px ${h.status === 'ACTIVE' ? 'rgba(74, 222, 128, 0.5)' : 'rgba(239, 68, 68, 0.5)'}`
+                }}></div>
+                <span style={{
+                  color: h.status === 'ACTIVE' ? '#4ade80' : '#ef4444',
+                  fontWeight: 'bold',
+                  textTransform: 'uppercase',
+                  fontSize: '11px',
+                  letterSpacing: '0.1em'
+                }}>
+                  {h.status}
+                </span>
               </div>
-              <span className="text-[#444] text-[11px] italic w-1/3 text-right">{h.date}</span>
+
+              {/* 3. DATA (Wyrównana do prawej) */}
+              <span style={{ 
+                color: '#444', 
+                fontSize: '11px', 
+                fontStyle: 'italic', 
+                width: '33%', 
+                textAlign: 'right' 
+              }}>
+                {h.date}
+              </span>
             </div>
-          )) : <p className="text-[#333] text-center italic text-sm">No recent searches yet...</p>}
+          ))}
+
         </div>
       </div>
 
-      {/* --- STOPKA --- */}
       <footer style={S.footer}>
-          <p className="text-[12px] text-[#555] tracking-[0.4em] uppercase font-bold mb-2">2026 ® ALL RIGHTS RESERVED</p>
-          <p className="text-[10px] text-[#333] tracking-[0.6em] uppercase font-light">WSB Merito Student project</p>
+          <p className="text-[12px] text-[#555] font-bold mb-2 tracking-widest">2026 ® ALL RIGHTS RESERVED</p>
+          <p className="text-[10px] text-[#333] tracking-widest uppercase">WSB Merito Student project</p>
       </footer>
     </div>
   );
@@ -283,15 +388,11 @@ export default function App() {
 
 function StatBox({ title, value }) {
   const words = title.split(' ');
-  const dateWord = words.pop();
-  const restOfTitle = words.join(' ');
-
+  const last = words.pop();
   return (
-    <div style={{backgroundColor: '#151515', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '15px', padding: '20px 10px', textAlign: 'center', boxShadow: 'inset 0 0 20px rgba(0,0,0,0.3)', minHeight: '110px', display: 'flex', flexDirection: 'column', justifyContent: 'center'}}>
-      <p className="text-[10px] text-[#666] uppercase tracking-[0.2em] font-bold mb-3">
-        {restOfTitle}<br/>{dateWord}
-      </p>
-      <p className="text-[16px] font-bold text-[#eee] tracking-tight">{value}</p>
+    <div style={{backgroundColor: '#151515', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '15px', padding: '20px 10px', textAlign: 'center', minHeight: '110px', display: 'flex', flexDirection: 'column', justifyContent: 'center'}}>
+      <p className="text-[10px] text-[#666] uppercase font-bold mb-3">{words.join(' ')}<br/>{last}</p>
+      <p className="text-[16px] font-bold text-[#eee]">{value}</p>
     </div>
   );
 }
