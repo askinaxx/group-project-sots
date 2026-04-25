@@ -106,9 +106,19 @@ export default function App() {
       if (!response.ok) throw new Error('Domain not found');
       const result = await response.json();
       setDomainData(result); 
+
+       // --- LOGIKA STATUSU DLA HISTORII (Spójna z kartą główną) ---
+      const statusFromApi = result.status?.[0]?.toLowerCase() || "";
+      
+      // Definiujemy co uznajemy za "ACTIVE"
+      const isActive = statusFromApi.includes('active') || 
+                       (statusFromApi.includes('prohibited') && !statusFromApi.includes('pending'));
+
+      const displayStatus = isActive ? "ACTIVE" : "INACTIVE";
+
       const newItem = { 
         name: result.domainName, 
-        status: result.status?.[1]?.toUpperCase() || "ACTIVE", 
+        status: displayStatus, 
         date: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) 
       };
       setSearchHistory(prev => [newItem, ...prev].slice(0, 5));
@@ -199,8 +209,28 @@ export default function App() {
             {/* --- TE TRZY STATUSY --- */}
             <div style={{ marginBottom: '30px' }}>
               <div style={{backgroundColor: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '8px', padding: '12px 20px', textAlign: 'center', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.3em', fontWeight: '700', color: '#aaa', marginBottom: '10px'}}>registered</div>
-              <div style={{backgroundColor: 'rgba(74, 222, 128, 0.05)', color: '#4ade80', border: '1px solid rgba(74, 222, 128, 0.2)', borderRadius: '8px', padding: '12px 20px', textAlign: 'center', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.3em', fontWeight: '700', marginBottom: '10px'}}>
-                active
+              <div style={{
+                backgroundColor: (domainData.status?.[0]?.toLowerCase().includes('active') || domainData.status?.[0]?.toLowerCase().includes('prohibited')) 
+                  ? 'rgba(74, 222, 128, 0.05)' 
+                  : 'rgba(239, 68, 68, 0.05)', 
+                color: (domainData.status?.[0]?.toLowerCase().includes('active') || domainData.status?.[0]?.toLowerCase().includes('prohibited')) 
+                  ? '#4ade80' 
+                  : '#ef4444', 
+                border: `1px solid ${(domainData.status?.[0]?.toLowerCase().includes('active') || domainData.status?.[0]?.toLowerCase().includes('prohibited')) 
+                  ? 'rgba(74, 222, 128, 0.2)' 
+                  : 'rgba(239, 68, 68, 0.2)'}`, 
+                borderRadius: '8px', 
+                padding: '12px 20px', 
+                textAlign: 'center', 
+                fontSize: '10px', 
+                textTransform: 'uppercase', 
+                letterSpacing: '0.3em', 
+                fontWeight: '700', 
+                marginBottom: '10px'
+              }}>
+                {(domainData.status?.[0]?.toLowerCase().includes('active') || domainData.status?.[0]?.toLowerCase().includes('prohibited')) 
+                  ? "ACTIVE" 
+                  : "INACTIVE"}
               </div>
               <p style={{ textAlign: 'center', fontSize: '11px', fontStyle: 'italic', color: '#666', marginTop: '15px' }}>
                 days left: <span className="text-white font-bold">{domainData?.daysLeft || "N/A"}</span>
