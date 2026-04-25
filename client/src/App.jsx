@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import html2pdf from "html2pdf.js";
 import { Search, History, ArrowDown } from 'lucide-react';
-
+import { useEffect, useState } from "react";
 
 const localMockData = {
   "success": true,
@@ -13,6 +13,31 @@ const localMockData = {
     "timeLeft": "2y 125 days left"
   }
 };
+
+const API = import.meta.env.VITE_API_URL;
+
+export default function App() {
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    fetch(`${API}/api/user/1`)
+      .then((res) => res.json())
+      .then(setUser);
+  }, []);
+
+  if (!user) return <p>Loading...</p>;
+
+
+  function withUserFlags(req, res, next) {
+  res.enrichUser = (user) => ({
+    ...user,
+    flags: {
+      isActive: user.status === "active",
+    },
+  });
+
+  next();
+}
 
 function App() {
   const [domainData] = useState(localMockData.data);
@@ -154,6 +179,21 @@ function App() {
     Download PDF
   </button>
 </div>
+
+
+<div className="mt-4 text-sm">
+  <p>Active: {String(user.flags.isActive)}</p>
+  <p>Blocked: {String(user.flags.isBlocked)}</p>
+
+  <p>Risk: {user.safety.riskLevel}</p>
+
+  {user.safety.requiresReview && (
+    <p className="text-red-500 font-bold">
+      Requires manual review
+    </p>
+  )}
+</div>
+
 
 };
 );
