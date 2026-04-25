@@ -40,24 +40,36 @@ body {
   box-shadow: 0 0 20px rgba(147, 51, 234, 0.2);
 }
 
-/* Karta główna - sztywna szerokość i ciemne tło */
+/* Uelastyczniamy kartę */
 .result-card {
   background: rgba(40, 40, 40, 0.95);
   width: 960px;
+  min-height: 400px;
+  height: auto; /* Pozwól karcie rosnąć */
   border-radius: 30px;
-  padding: 60px;
+  padding: 50px;
   border: 1px solid rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(10px);
   margin-top: 40px;
+  display: flex; /* Flexbox uratuje układ */
+  flex-direction: column;
+}
+
+/* StatBoxy muszą mieć auto-szerokość */
+.stat-box-container {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  width: 100%;
 }
 
 .stat-box {
   background: rgba(20, 20, 20, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 15px;
-  padding: 25px;
-  text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 20px 10px;
+  border-radius: 12px;
+  min-height: 80px;
 }
+
 
 .history-item {
   background: rgba(47, 47, 47, 0.4);
