@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import html2pdf from "html2pdf.js";
-import { Search, History, ArrowDown } from 'lucide-react';
-import { useEffect, useState } from "react";
+import { Search, History } from 'lucide-react';
+import './App.css';
 
 const localMockData = {
   "success": true,
@@ -14,113 +14,80 @@ const localMockData = {
   }
 };
 
-const API = import.meta.env.VITE_API_URL;
-
 export default function App() {
-  const [user, setUser] = useState(null);
-
-  useEffect(() => {
-    fetch(`${API}/api/user/1`)
-      .then((res) => res.json())
-      .then(setUser);
-  }, []);
-
-  if (!user) return <p>Loading...</p>;
-
-
-  function withUserFlags(req, res, next) {
-  res.enrichUser = (user) => ({
-    ...user,
-    flags: {
-      isActive: user.status === "active",
-    },
-  });
-
-  next();
-}
-
-function App() {
   const [domainData] = useState(localMockData.data);
   const [query, setQuery] = useState("");
-  const pdfRef = useRef();
   const [searchHistory] = useState([
     { name: "domain.name.com", date: "5 minutes ago", status: "active" },
-    { name: "domain.name.com", date: "5 minutes ago", status: "active" }
+    { name: "github.io", date: "1 hour ago", status: "active" }
   ]);
+  const pdfRef = useRef();
 
-  return (
-    <div className="min-h-screen text-[#DCDCDC] flex flex-col items-center" 
-         style={{ backgroundColor: '#151515', fontFamily: "'Montserrat', sans-serif", padding: '80px 20px' }}>
-      
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700&display=swap');
-      `}</style>
+  const handleDownloadPDF = () => {
+    const element = pdfRef.current;
+    const options = {
+      margin: 0.5,
+      filename: `${domainData.domainName}.pdf`,
+      image: { type: 'jpeg', quality: 1 },
+      html2canvas: { scale: 2 },
+      jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+    };
+    html2pdf().set(options).from(element).save();
+  };
 
-      {/* --- HEADER --- */}
-      <header className="text-center w-full max-w-2xl" style={{ marginBottom: '80px' }}>
-        <h1 className="text-4xl font-semibold mb-4 text-white tracking-tight">Looking for current status of domain?</h1>
-        <p className="text-[#888] text-sm" style={{ marginBottom: '40px' }}>enter below name of domain that you are looking for</p>
+    return (
+    <div className="main-container">
+      <header className="text-center mb-20">
+        <h1 className="text-5xl font-bold mb-6 text-white tracking-tight">Looking for current status of domain?</h1>
+        <p className="text-[#888] text-lg mb-10">enter below name of domain that you are looking for</p>
         
-        <div className="flex flex-col items-center">
-          <input 
-            type="text"
-            className="bg-[#1c1c1c] border border-white/5 rounded-full py-3 px-8 text-center text-sm outline-none focus:border-purple-500/40 shadow-inner"
-            style={{ width: '400px', marginBottom: '24px' }}
-            placeholder="type here ..."
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-          <button className="bg-[#222] border border-white/5 px-10 py-2.5 rounded-full text-[11px] text-[#aaa] flex items-center gap-2 hover:bg-[#333] transition-all uppercase tracking-widest">
-            search <Search size={14} className="text-purple-400" />
-          </button>
-        </div>
+        <input 
+          type="text"
+          className="custom-input mb-8"
+          placeholder="type here ..."
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+        <br />
+        <button className="bg-[#222] border border-white/10 px-12 py-3 rounded-full text-xs text-[#aaa] uppercase tracking-[0.3em] hover:bg-[#333] transition-all">
+          search <Search size={14} className="inline ml-2 text-purple-500" />
+        </button>
       </header>
 
-      {/* --- MAIN RESULT CARD --- */}
       {domainData && (
-        <div 
-            ref={pdfRef}
-            className="rounded-[40px] shadow-2xl border border-white/5"
-             style={{ backgroundColor: '#2F2F2F', width: '960px', padding: '60px', marginBottom: '100px' }}>
-          
-          <div style={{ display: 'flex', gap: '60px' }}>
-            
-            {/* Lewa strona */}
-            <div style={{ flex: 1 }}>
-              <div style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '30px', marginBottom: '50px' }}>
-                <h2 className="text-3xl font-bold tracking-[0.15em] text-white uppercase">{domainData.domainName}</h2>
-              </div>
-              
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
+        <div ref={pdfRef} className="result-card">
+          <div className="flex gap-12">
+            <div className="flex-1">
+              <h2 className="text-4xl font-bold tracking-widest text-white uppercase mb-10 border-b border-white/10 pb-6">
+                {domainData.domainName}
+              </h2>
+              <div className="grid grid-cols-3 gap-4">
                 <StatBox title="registration date" value={domainData.dates.registration} />
                 <StatBox title="last update" value={domainData.dates.updated} />
                 <StatBox title="expiration date" value={domainData.dates.expiration} />
               </div>
-
-              <div className="bg-[#151515]/40 border border-white/5 rounded-[25px]" style={{ marginTop: '60px', padding: '40px' }}>
-                 <p className="text-[10px] text-[#999] uppercase tracking-[0.2em] font-bold" style={{ marginBottom: '20px' }}>linked dns server</p>
-                 <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '20px', minHeight: '60px' }}></div>
+              <div className="mt-12 p-8 border-t border-white/5 bg-black/20 rounded-xl">
+                 <p className="text-[10px] text-[#666] uppercase tracking-[0.3em] mb-4">linked dns server</p>
               </div>
             </div>
 
-            {/* Prawa strona */}
-            <div style={{ width: '280px', display: 'flex', flexDirection: 'column', gap: '40px' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                 <div className="bg-[#151515]/60 text-[#bbb] py-2.5 rounded-full text-[10px] text-center uppercase tracking-[3px] border border-white/5">registered</div>
-                 <div className="bg-green-500/10 text-green-400 py-2.5 rounded-full text-[10px] text-center uppercase tracking-[3px] border border-green-500/20">active</div>
-                 <p className="text-purple-400/70 text-[10px] text-center italic font-light" style={{ marginTop: '15px' }}>to expire: {domainData.timeLeft}</p>
-              </div>
-
-              <div className="bg-[#151515]/50 border border-white/5 rounded-[35px] text-center shadow-inner" style={{ padding: '40px 20px' }}>
-                <p className="text-[10px] text-[#999] uppercase tracking-widest font-bold" style={{ marginBottom: '30px' }}>ownership</p>
-                <div className="w-12 h-12 bg-purple-500/10 rounded-full mx-auto flex items-center justify-center border border-purple-500/10" style={{ marginBottom: '25px' }}>
-                   <div className="w-4 h-4 bg-purple-400/40 rounded-full blur-[2px]"></div>
-                </div>
-                <p className="text-[12px] font-semibold tracking-[0.1em] text-[#DCDCDC] uppercase">{domainData.registrar}</p>
-              </div>
+            {/* PRAWA KOLUMNA Z PDF */}
+            <div className="w-[300px] flex flex-col gap-6">
+              <Badge text="registered" />
+              <Badge text="active" color="green" />
+              <p className="text-purple-400/50 text-[10px] text-center italic">to expire: {domainData.timeLeft}</p>
               
-              <div className="flex justify-center" style={{ marginTop: '10px' }}>
-                <ArrowDown size={28} className="text-[#666] bg-[#151515] p-2 rounded-xl border border-white/5 cursor-pointer hover:text-white transition-colors" />
+              <div className="bg-black/30 border border-white/5 rounded-3xl p-10 text-center">
+                <p className="text-[10px] text-[#666] uppercase tracking-widest mb-6">ownership</p>
+                <div className="w-10 h-10 bg-purple-500/20 rounded-full mx-auto mb-6 flex items-center justify-center">
+                   <div className="w-3 h-3 bg-purple-500 rounded-full blur-[1px]"></div>
+                </div>
+                <p className="text-sm font-semibold uppercase mb-8">{domainData.registrar}</p>
+                
+                {/* PRZYCISK PDF TUTAJ */}
+                <button onClick={handleDownloadPDF} className="w-full bg-white/5 hover:bg-white/10 border border-white/10 py-3 rounded-xl text-[10px] uppercase tracking-widest transition-all">
+                  Download PDF Report
+                </button>
               </div>
             </div>
           </div>
@@ -128,86 +95,39 @@ function App() {
       )}
 
       {/* --- HISTORY --- */}
-      <div className="w-full" style={{ maxWidth: '960px', marginBottom: '100px' }}>
-        <p className="text-xs text-[#888] flex items-center gap-2 tracking-[0.2em] font-bold uppercase" style={{ marginBottom: '30px', marginLeft: '20px' }}>
+      <div className="w-full max-w-[960px] mb-24">
+        <p className="text-xs text-[#888] flex items-center gap-2 tracking-[0.2em] font-bold uppercase mb-8 ml-5">
           <History size={16} /> Your latest search history
         </p>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '25px' }}>
+        <div className="grid grid-cols-2 gap-6">
           {searchHistory.map((h, i) => (
-            <div key={i} className="bg-[#2F2F2F] border border-white/5 rounded-2xl flex justify-between items-center shadow-lg hover:bg-[#353535] transition-all cursor-pointer" style={{ padding: '25px 35px' }}>
+            <div key={i} className="bg-[#2F2F2F] border border-white/5 rounded-2xl flex justify-between items-center p-6 px-9 hover:bg-[#353535] transition-all cursor-pointer">
               <span className="text-[#eee] font-semibold text-[12px] tracking-wide">{h.name}</span>
-              <span className="text-[#888] text-[9px] uppercase tracking-widest font-bold">registered</span>
-              <span className="text-green-500 font-bold uppercase flex items-center gap-2 text-[10px] tracking-widest">
-                <div className="w-1.5 h-1.5 bg-green-500 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.5)]"></div>{h.status}
-              </span>
+              <span className="text-green-500 font-bold uppercase flex items-center gap-2 text-[10px] tracking-widest">{h.status}</span>
               <span className="text-[#666] text-[10px] italic font-light">{h.date}</span>
             </div>
           ))}
         </div>
       </div>
-
       <footer className="py-10 text-[10px] text-[#444] tracking-[0.6em] uppercase font-light">2026 ®</footer>
     </div>
-  
-  const handleDownloadPDF = () => {
-  const element = pdfRef.current;
-
-  const options = {
-    margin: 0.5,
-    filename: `${domainData.domainName}.pdf`,
-    image: { type: 'jpeg', quality: 1 },
-    html2canvas: { scale: 2 },
-    jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
-  };
-
-  html2pdf().set(options).from(element).save();
-
-<div className="mb-20">
-  <button
-    onClick={handleDownloadPDF}
-    className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-full text-xs uppercase tracking-widest"
-  >
-    Download PDF
-  </button>
-</div>
-
-<div className="mb-20">
-  <button
-    onClick={handleDownloadPDF}
-    className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-full text-xs uppercase tracking-widest"
-  >
-    Download PDF
-  </button>
-</div>
-
-
-<div className="mt-4 text-sm">
-  <p>Active: {String(user.flags.isActive)}</p>
-  <p>Blocked: {String(user.flags.isBlocked)}</p>
-
-  <p>Risk: {user.safety.riskLevel}</p>
-
-  {user.safety.requiresReview && (
-    <p className="text-red-500 font-bold">
-      Requires manual review
-    </p>
-  )}
-</div>
-
-
-};
-);
+  );
 }
-
-
 
 function StatBox({ title, value }) {
   return (
-    <div className="bg-[#151515]/40 border border-white/5 rounded-2xl text-center hover:bg-[#151515]/60 transition-colors" style={{ padding: '30px 10px' }}>
-      <p className="text-[9px] text-[#999] uppercase tracking-[0.15em] font-bold" style={{ marginBottom: '15px' }}>{title}</p>
+    <div className="bg-[#151515]/40 border border-white/5 rounded-2xl text-center py-8 px-2 hover:bg-[#151515]/60 transition-colors">
+      <p className="text-[9px] text-[#999] uppercase tracking-[0.15em] font-bold mb-4">{title}</p>
       <p className="text-[13px] font-bold text-[#DCDCDC] tracking-tight">{value}</p>
     </div>
   );
 }
 
-export default App;
+function Badge({ text, variant }) {
+  const styles = variant === 'success' 
+    ? "bg-green-500/10 text-green-400 border-green-500/20" 
+    : "bg-[#151515]/60 text-[#bbb] border-white/5";
+  return (
+    <div className={`${styles} py-2.5 rounded-full text-[10px] text-center uppercase tracking-[3px] border`}>{text}</div>
+  );
+}
